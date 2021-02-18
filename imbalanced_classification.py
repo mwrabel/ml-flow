@@ -30,13 +30,18 @@ print('Mean ROC AUC: %.3f' % np.mean(scores))
 # define pipeline
 from imblearn.pipeline import Pipeline
 from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import uniform
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.kernel_approximation import PolynomialCountSketch
 
 pipe = Pipeline([
+    ('scaler', MinMaxScaler()),
+    # ('kernel_approx', PolynomialCountSketch(degree=2, n_components=300)),
     ('model', CalibratedClassifierCV(base_estimator=SVC(), method='isotonic', cv=5))
 ])
 
 params = {
-    'model__base_estimator__C': [0.5, 1, 2],
+    'model__base_estimator__C': uniform(loc=0.00, scale=3),
     'model__base_estimator__kernel': ['poly', 'rbf', 'sigmoid'],
     'model__base_estimator__gamma': ['scale', 'auto'],
 }
@@ -46,4 +51,9 @@ fold = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
 model = RandomizedSearchCV(pipe, params, scoring='roc_auc', cv=fold, n_iter=10, random_state=1, n_jobs=-1, verbose=2)
 model.fit(X, y)
 
-model.best_score_
+print(model.best_score_)  # 0.9339846359385436
+
+
+from sklearn.utils import estimator_html_repr
+with open('estimator.html', 'w') as f:
+    f.write(estimator_html_repr(model))
