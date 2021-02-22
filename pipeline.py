@@ -22,19 +22,31 @@ X, y = make_classification(n_samples=1000,
                            random_state=123)
 
 
-pipe = Pipeline([('scaler', StandardScaler()),
-                 ('selector', SelectKBest(mutual_info_classif, k=5)),
-                 ('classifier', LogisticRegression())])
+pipe = Pipeline([
+    ('scaler', StandardScaler()),
+    ('selector', SelectKBest(mutual_info_classif, k=5)),
+    ('classifier', LogisticRegression())
+])
 
 
-search_space = [{'selector__k': [5, 10, 20, 30]},
-                {'classifier': [LogisticRegression(solver='lbfgs')],
-                 'classifier__C': [0.01, 0.1, 1.0]},
-                {'classifier': [RandomForestClassifier(n_estimators=100)],
-                 'classifier__max_depth': [5, 10, None]},
-                {'classifier': [KNeighborsClassifier()],
-                 'classifier__n_neighbors': [3, 7, 11],
-                 'classifier__weights': ['uniform', 'distance']}]
+search_space = [
+    {
+        'selector__k': [5, 10, 20, 30]
+    },
+    {
+        'classifier': [LogisticRegression(solver='lbfgs')],
+        'classifier__C': [0.01, 0.1, 1.0]
+    },
+    {
+        'classifier': [RandomForestClassifier(n_estimators=100)],
+        'classifier__max_depth': [5, 10, None]
+    },
+    {
+        'classifier': [KNeighborsClassifier()],
+        'classifier__n_neighbors': [3, 7, 11],
+        'classifier__weights': ['uniform', 'distance']
+    }
+]
 
 clf = GridSearchCV(pipe, search_space, cv=10, verbose=0)
 clf = clf.fit(X, y)
