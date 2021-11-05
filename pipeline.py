@@ -12,7 +12,6 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, RepeatedSt
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, PolynomialFeatures
-from pipeline_module import *
 
 from scipy.stats import uniform, randint, loguniform
 
