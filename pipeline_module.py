@@ -127,7 +127,7 @@ class DFOneHotEncoder(TransformerMixin):
     def transform(self, X):
         # assumes X is a DataFrame
         Xohe = self.ohe.transform(X)
-        new_colnames = self.ohe.get_feature_names().tolist()
+        new_colnames = self.ohe.get_feature_names_out().tolist()
         for i in range(len(X.columns)):
             new_colnames = [x.replace(f'x{i}_', f'{X.columns[i]}_') for x in new_colnames]
         Xohed = pd.DataFrame(Xohe, index=X.index, columns=new_colnames)
@@ -188,7 +188,7 @@ class DummyTransformer(TransformerMixin):
         # assumes X is a DataFrame
         Xdict = X.to_dict('records')
         Xt = self.dv.transform(Xdict)
-        cols = self.dv.get_feature_names()
+        cols = self.dv.get_feature_names_out()
         Xdum = pd.DataFrame(Xt, index=X.index, columns=cols)
         # drop column indicating NaNs
         nan_cols = [c for c in cols if '=' not in c]
