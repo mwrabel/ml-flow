@@ -41,33 +41,40 @@ y = pd.Series(y)
 train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.20, random_state=42)
 
 # Preprocessing Pipeline
-preprocessor = ColumnTransformer(
-    transformers=[
-        ("numeric",
-         Pipeline(steps=[
-             ("imputer", SimpleImputer(strategy='mean')),
-             ("scaler", StandardScaler(with_mean=True, with_std=True))
-         ]),
-         make_column_selector(dtype_include=['float', 'int'])),
-        ("category",
-         Pipeline(steps=[
-             ("imputer", SimpleImputer(strategy='constant', fill_value='missing')),
-             ("encoder", OneHotEncoder(handle_unknown="ignore"))
-         ]),
-         make_column_selector(dtype_include='category')),
-        ("high_cardinality",
-         Pipeline(steps=[
-             ("imputer", SimpleImputer(strategy='constant', fill_value='missing', missing_values=None)),
-             ("hasher", FeatureHasher(n_features=5, input_type='string'))
-         ]),
-         make_column_selector(dtype_include='object'),
-         )
-    ], remainder='passthrough'
-)
+from pipeline_module import *
+preprocessor = Pipeline([
+    ('features', DFFeatureUnion([
+        ('int', Pipeline([
+            ('extract', ColumnExtractor(['pclass', 'sibsp', 'parch'])),
+            ('imputer', DFSimpleImputer(strategy='median')),
+        ])),
+        ('num', Pipeline([
+            ('extract', ColumnExtractor(['age', 'fare'])),
+            ('imputer', DFSimpleImputer(strategy='mean')),
+        ])),
+        ('num_unknown', Pipeline([
+            ('extract', ColumnExtractor(['body'])),
+            ('imputer', DFSimpleImputer(strategy='constant', fill_value=0)),
+        ])),
+        ('cat', Pipeline([
+            ('extract', ColumnExtractor(['sex', 'embarked'])),
+            ('imputer', DFSimpleImputer(strategy='most_frequent')),
+            ('ohe', DFOneHotEncoder(drop='first')),
+        ])),
+        ('high_cardinality', Pipeline([
+            ('extract', ColumnExtractor(['name', 'ticket', 'cabin', 'boat', 'home.dest'])),
+            ('imputer', DFSimpleImputer(strategy='constant', fill_value='missing', missing_values=None)),
+            ('hasher', DFFeatureHasher(n_features=100, input_type='string'))
+        ])),
+    ])),
+    ('poly', DFPolynomialFeatures(interaction_only=False)),
+    ('scale', DFStandardScaler()),
+])
+
+# XD = preprocessor.fit_transform(X, y)
 
 # Classification Pipeline
 classifier = Pipeline(steps=[
-    ('poly', PolynomialFeatures()),
     ('reductor', PCA()),
     ('selector', SelectFromModel(ExtraTreesClassifier())),
     ('estimator', RandomForestClassifier())
@@ -81,21 +88,14 @@ pipe = Pipeline(steps=[
 
 # Search space
 common_search_space = {
-    'classifier__poly__interaction_only': [True, False],
     'classifier__reductor__n_components': randint(5, 15),
-    # 'classifier__selector__threshold': ['0.125*mean', '0.25*mean', '0.5*mean', '0.75*mean', '1*mean', '1.25*mean'],
+    'classifier__selector__threshold': ['0.125*mean', '0.25*mean', '0.5*mean', '0.75*mean', '1*mean', '1.25*mean'],
 }
 
 search_space = [
-    # {
-    #     **common_search_space,
-    #     'classifier__estimator': [LogisticRegression(solver='saga')],
-    #     'classifier__estimator__C': uniform(loc=0.00, scale=1.00),
-    #     'classifier__estimator__penalty': ['none', 'l1', 'l2', 'elasticnet']
-    # },
     {
         **common_search_space,
-        'classifier__estimator': [RandomForestClassifier()],
+        'classifier__estimator': [RandomForestClassifier(warm_start=True)],
         'classifier__estimator__n_estimators': randint(10, 500),
         'classifier__estimator__criterion': ['gini', 'entropy'],
         'classifier__estimator__max_depth': randint(5, 16),
@@ -127,6 +127,9 @@ clf = RandomizedSearchCV(pipe, search_space, cv=fold, scoring='roc_auc', n_iter=
 #                             aggressive_elimination=False, factor=2, min_resources=50)
 
 clf = clf.fit(train_features, train_labels)
+print(clf.best_estimator_)
+# score_auc = roc_auc_score(y, clf.predict_proba(X)[:, 1])
+# print(score_auc)
 
 score_auc_train = roc_auc_score(train_labels, clf.predict_proba(train_features)[:, 1])
 score_auc_test = roc_auc_score(test_labels, clf.predict_proba(test_features)[:, 1])
