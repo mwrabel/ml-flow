@@ -37,6 +37,8 @@ X, y = fetch_openml('titanic', version=1, as_frame=True, return_X_y=True)
 X = pd.DataFrame(X)
 y = pd.Series(y)
 
+#X = X[['name']]
+
 # Split to train / test
 train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.20, random_state=42)
 
@@ -58,12 +60,14 @@ preprocessor = ColumnTransformer(
         ("high_cardinality",
          Pipeline(steps=[
              ("imputer", SimpleImputer(strategy='constant', fill_value='missing', missing_values=None)),
-             ("hasher", FeatureHasher(n_features=5, input_type='string'))
+             ("hasher", FeatureHasher(n_features=10, input_type='string'))
          ]),
          make_column_selector(dtype_include='object'),
          )
     ], remainder='passthrough'
 )
+
+#xd = preprocessor.fit_transform(X, y)
 
 # Classification Pipeline
 classifier = Pipeline(steps=[
@@ -83,7 +87,7 @@ pipe = Pipeline(steps=[
 common_search_space = {
     'classifier__poly__interaction_only': [True, False],
     'classifier__reductor__n_components': randint(5, 15),
-    # 'classifier__selector__threshold': ['0.125*mean', '0.25*mean', '0.5*mean', '0.75*mean', '1*mean', '1.25*mean'],
+    'classifier__selector__threshold': ['0.125*mean', '0.25*mean', '0.5*mean', '0.75*mean', '1*mean', '1.25*mean'],
 }
 
 search_space = [
@@ -122,7 +126,7 @@ search_space = [
 fold = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
 
 # clf = GridSearchCV(pipe, search_space, cv=10, verbose=0)
-clf = RandomizedSearchCV(pipe, search_space, cv=fold, scoring='roc_auc', n_iter=100, random_state=1, n_jobs=-1, verbose=2)
+clf = RandomizedSearchCV(pipe, search_space, cv=fold, scoring='roc_auc', n_iter=10, random_state=1, n_jobs=-1, verbose=2)
 # clf = HalvingRandomSearchCV(pipe, search_space, cv=fold, verbose=1, scoring='roc_auc', n_jobs=-1,
 #                             aggressive_elimination=False, factor=2, min_resources=50)
 
@@ -132,8 +136,8 @@ score_auc_train = roc_auc_score(train_labels, clf.predict_proba(train_features)[
 score_auc_test = roc_auc_score(test_labels, clf.predict_proba(test_features)[:, 1])
 print(clf.best_estimator_)
 
-print(score_auc_train)
-print(score_auc_test)
+print(f'training auc: {score_auc_train}')
+print(f'testing auc: {score_auc_test}')
 
 train_predictions = clf.predict(train_features)
 print(classification_report(train_labels, train_predictions))

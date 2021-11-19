@@ -114,20 +114,21 @@ class DFOneHotEncoder(TransformerMixin):
     # next level: iterate with different arguments over different variables
     # https://www.guidodiepen.nl/2021/02/keeping-column-names-when-using-sklearn-onehotencoder-on-pandas-dataframe/
 
-    def __init__(self, drop=None, sparse=False):
+    def __init__(self, drop=None, sparse=False, handle_unknown='error'):
         self.drop = drop
         self.sparse = sparse
+        self.handle_unknown = handle_unknown
         self.ohe = None
 
     def fit(self, X, y=None):
-        self.ohe = OneHotEncoder(drop=self.drop, sparse=self.sparse)
+        self.ohe = OneHotEncoder(drop=self.drop, sparse=self.sparse, handle_unknown=self.handle_unknown)
         self.ohe.fit(X)
         return self
 
     def transform(self, X):
         # assumes X is a DataFrame
         Xohe = self.ohe.transform(X)
-        new_colnames = self.ohe.get_feature_names_out().tolist()
+        new_colnames = self.ohe.get_feature_names().tolist()
         for i in range(len(X.columns)):
             new_colnames = [x.replace(f'x{i}_', f'{X.columns[i]}_') for x in new_colnames]
         Xohed = pd.DataFrame(Xohe, index=X.index, columns=new_colnames)
@@ -172,6 +173,8 @@ class DFPolynomialFeatures(TransformerMixin):
         return Xpoly
 
 
+
+
 class DummyTransformer(TransformerMixin):
 
     def __init__(self):
@@ -188,7 +191,7 @@ class DummyTransformer(TransformerMixin):
         # assumes X is a DataFrame
         Xdict = X.to_dict('records')
         Xt = self.dv.transform(Xdict)
-        cols = self.dv.get_feature_names_out()
+        cols = self.dv.get_feature_names()
         Xdum = pd.DataFrame(Xt, index=X.index, columns=cols)
         # drop column indicating NaNs
         nan_cols = [c for c in cols if '=' not in c]
